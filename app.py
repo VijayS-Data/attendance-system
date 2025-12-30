@@ -180,24 +180,26 @@ def attendance():
         conn.commit()
 
         df = pd.read_sql_query("""
-            SELECT
-                st.username AS Store,
-                sf.staff_name AS Staff,
-                strftime('%Y-%m', a.date) AS Month,
-                SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END) AS PresentDays,
-                SUM(CASE WHEN a.status='Absent' THEN 1 ELSE 0 END) AS AbsentDays,
-                ROUND(SUM(a.hours),2) AS TotalHours,
-                COUNT(a.date) AS TotalDays,
-                CASE
-                    WHEN sf.salary_type='daily'
-                    THEN SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END) * sf.salary_amount
-                    ELSE ROUND(SUM(a.hours) * sf.salary_amount,2)
-                END AS Salary
-            FROM attendance a
-            JOIN staff sf ON a.staff_id = sf.id
-            JOIN stores st ON a.store_id = st.id
-            GROUP BY st.username, sf.staff_name, Month
-        """, conn)
+    SELECT
+        st.username AS Store,
+        sf.staff_name AS Staff,
+        SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END) AS PresentDays,
+        SUM(CASE WHEN a.status='Absent' THEN 1 ELSE 0 END) AS AbsentDays,
+        sf.salary_type AS SalaryType,
+        sf.salary_amount AS Rate,
+        ROUND(SUM(a.hours), 2) AS TotalHours,
+        COUNT(a.date) AS TotalDays,
+        CASE
+            WHEN sf.salary_type = 'daily'
+            THEN SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END) * sf.salary_amount
+            ELSE ROUND(SUM(a.hours) * sf.salary_amount, 2)
+        END AS Salary
+    FROM attendance a
+    JOIN staff sf ON a.staff_id = sf.id
+    JOIN stores st ON a.store_id = st.id
+    GROUP BY st.username, sf.staff_name
+""", conn)
+
 
         conn.close()
         df.to_excel(OUTPUT, index=False)

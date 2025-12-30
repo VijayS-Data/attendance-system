@@ -1,23 +1,21 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, send_file
 import sqlite3
 from datetime import datetime, date
 import pandas as pd
 import os
 
 app = Flask(__name__)
-app.secret_key = "attendance_secret"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
 DB = "attendance.db"
 OUTPUT = "monthly_attendance.xlsx"
-TEMP = "monthly_temp.xlsx"
-LATE_AFTER = "09:15"
 
 
+# ---------------- DB ----------------
 def get_db():
     return sqlite3.connect(DB)
 
 
-# ---------- CREATE TABLES ----------
 conn = get_db()
 cur = conn.cursor()
 
@@ -50,7 +48,6 @@ CREATE TABLE IF NOT EXISTS attendance (
     in_time TEXT,
     out_time TEXT,
     hours REAL,
-    late INTEGER,
     PRIMARY KEY (store_id, staff_id, date)
 )
 """)
@@ -59,21 +56,18 @@ conn.commit()
 conn.close()
 
 
-# ---------- LOGIN ----------
+# ---------------- LOGIN ----------------
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         login_type = request.form["login_type"]
 
-        # ADMIN
         if login_type == "admin":
             if request.form["username"] == "admin" and request.form["password"] == "admin123":
-                session.clear()
                 session["admin"] = True
-                return redirect("/admin/dashboard")
+                return redirect("/admin")
             return "Invalid admin login"
 
-        # STORE
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
@@ -84,7 +78,6 @@ def login():
         conn.close()
 
         if row:
-            session.clear()
             session["store_id"] = row[0]
             return redirect("/staff")
 
@@ -93,7 +86,7 @@ def login():
     return render_template("login.html")
 
 
-# ---------- REGISTER STORE ----------
+# ---------------- REGISTER STORE ----------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -106,11 +99,10 @@ def register():
         conn.commit()
         conn.close()
         return redirect("/")
-
     return render_template("register.html")
 
 
-# ---------- STAFF ----------
+# ---------------- STAFF ----------------
 @app.route("/staff", methods=["GET", "POST"])
 def staff():
     if "store_id" not in session:
@@ -146,9 +138,6 @@ def staff():
 
 @app.route("/remove_staff/<int:id>")
 def remove_staff(id):
-    if "store_id" not in session:
-        return redirect("/")
-
     conn = get_db()
     cur = conn.cursor()
     cur.execute("DELETE FROM staff WHERE id=?", (id,))
@@ -157,15 +146,14 @@ def remove_staff(id):
     return redirect("/staff")
 
 
-# ---------- ATTENDANCE ----------
+# ---------------- ATTENDANCE ----------------
 @app.route("/attendance", methods=["GET", "POST"])
 def attendance():
     if "store_id" not in session:
         return redirect("/")
 
     store_id = session["store_id"]
-    selected_date = request.args.get("date")
-    today = selected_date if selected_date else date.today().strftime("%Y-%m-%d")
+    today = request.args.get("date") or date.today().strftime("%Y-%m-%d")
 
     conn = get_db()
     cur = conn.cursor()
@@ -174,61 +162,45 @@ def attendance():
 
     if request.method == "POST":
         for s in staff:
-            status = request.form.get(f"status_{s[0]}")
+            status = request.form.get(f"status_{s[0]}", "Absent")
             in_time = request.form.get(f"in_{s[0]}")
             out_time = request.form.get(f"out_{s[0]}")
 
             hours = 0
-            late = 0
             if status == "Present" and in_time and out_time:
                 t1 = datetime.strptime(in_time, "%H:%M")
                 t2 = datetime.strptime(out_time, "%H:%M")
                 hours = round((t2 - t1).seconds / 3600, 2)
-                if in_time > LATE_AFTER:
-                    late = 1
 
             cur.execute("""
                 INSERT OR REPLACE INTO attendance
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (store_id, s[0], today, status, in_time, out_time, hours, late))
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (store_id, s[0], today, status, in_time, out_time, hours))
 
         conn.commit()
 
-        # ---------- EXCEL OUTPUT (FINAL FORMAT) ----------
         df = pd.read_sql_query("""
             SELECT
                 st.username AS Store,
                 sf.staff_name AS Staff,
                 strftime('%Y-%m', a.date) AS Month,
-
                 SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END) AS PresentDays,
                 SUM(CASE WHEN a.status='Absent' THEN 1 ELSE 0 END) AS AbsentDays,
-
-                ROUND(SUM(a.hours), 2) AS TotalHours,
+                ROUND(SUM(a.hours),2) AS TotalHours,
                 COUNT(a.date) AS TotalDays,
-
                 CASE
                     WHEN sf.salary_type='daily'
-                    THEN
-                        SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END)
-                        * sf.salary_amount
-                    ELSE
-                        ROUND(SUM(a.hours) * sf.salary_amount, 2)
+                    THEN SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END) * sf.salary_amount
+                    ELSE ROUND(SUM(a.hours) * sf.salary_amount,2)
                 END AS Salary
-
             FROM attendance a
             JOIN staff sf ON a.staff_id = sf.id
             JOIN stores st ON a.store_id = st.id
             GROUP BY st.username, sf.staff_name, Month
-            ORDER BY st.username, sf.staff_name
         """, conn)
 
         conn.close()
-
-        df.to_excel(TEMP, index=False)
-        if os.path.exists(OUTPUT):
-            os.remove(OUTPUT)
-        os.rename(TEMP, OUTPUT)
+        df.to_excel(OUTPUT, index=False)
 
         return redirect(f"/attendance?date={today}&success=1")
 
@@ -236,89 +208,49 @@ def attendance():
     return render_template("attendance.html", staff=staff, today=today)
 
 
-# ---------- ADMIN ----------
-@app.route("/admin/dashboard")
-def admin_dashboard():
+# ---------------- DOWNLOAD EXCEL ----------------
+@app.route("/download")
+def download():
+    if not os.path.exists(OUTPUT):
+        return "No report yet"
+    return send_file(OUTPUT, as_attachment=True)
+
+
+# ---------------- ADMIN ----------------
+@app.route("/admin")
+def admin():
     if not session.get("admin"):
         return redirect("/")
-
     conn = get_db()
     cur = conn.cursor()
     cur.execute("SELECT id, username, active FROM stores")
     stores = cur.fetchall()
     conn.close()
-
     return render_template("admin_dashboard.html", stores=stores)
 
 
-@app.route("/admin/toggle/<int:id>")
-def toggle_store(id):
+@app.route("/admin/reset_attendance")
+def reset_attendance():
     if not session.get("admin"):
         return redirect("/")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        UPDATE stores
-        SET active = CASE WHEN active=1 THEN 0 ELSE 1 END
-        WHERE id=?
-    """, (id,))
-    conn.commit()
-    conn.close()
-    return redirect("/admin/dashboard")
-
-
-@app.route("/admin/reset/<int:id>", methods=["GET", "POST"])
-def admin_reset(id):
-    if not session.get("admin"):
-        return redirect("/")
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    if request.method == "POST":
-        cur.execute(
-            "UPDATE stores SET password=? WHERE id=?",
-            (request.form["password"], id)
-        )
-        conn.commit()
-        conn.close()
-        return redirect("/admin/dashboard")
-
-    cur.execute("SELECT username FROM stores WHERE id=?", (id,))
-    store = cur.fetchone()
-    conn.close()
-
-    return render_template("admin_reset.html", store=store, store_id=id)
-
-
-@app.route("/admin/reset_attendance", methods=["POST"])
-def admin_reset_attendance():
-    if not session.get("admin"):
-        return redirect("/")
-
     conn = get_db()
     cur = conn.cursor()
     cur.execute("DELETE FROM attendance")
     conn.commit()
     conn.close()
-
     if os.path.exists(OUTPUT):
         os.remove(OUTPUT)
+    return redirect("/admin")
 
-    return redirect("/admin/dashboard")
 
-
-# ---------- LOGOUT ----------
+# ---------------- LOGOUT ----------------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
 
-import os
-
+# ---------------- RUN ----------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-

@@ -1,0 +1,42 @@
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/script.js"></script>
+
+
+<div class="container">
+<div class="title">Staff Management</div>
+
+<div class="nav">
+<a href="/attendance">Attendance</a>
+<a href="/logout">Logout</a>
+</div>
+
+<form method="post">
+<label>Staff Name</label>
+<input name="staff_name" required>
+
+<label>Staff Type</label>
+<select name="staff_type">
+<option>Full-Time</option>
+<option>Part-Time</option>
+</select>
+
+<label>Salary Type</label>
+<select name="salary_type">
+<option value="daily">Per Day</option>
+<option value="hourly">Per Hour</option>
+</select>
+
+<label>Salary Amount</label>
+<input type="number" name="salary_amount" required>
+
+<button>Add Staff</button>
+</form>
+
+<hr>
+
+{% for s in staff %}
+<p>{{ s[1] }} — {{ s[3] }} @ {{ s[4] }}
+<a href="/remove_staff/{{ s[0] }}" onclick="return confirmDelete('{{ s[1] }}')">❌</a>
+</p>
+{% endfor %}
+</div>

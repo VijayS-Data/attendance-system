@@ -1,0 +1,108 @@
+body {
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    padding: 40px;
+
+    background: linear-gradient(
+        -45deg,
+        #2563eb,
+        #1e40af,
+        #0ea5e9,
+        #22c55e
+    );
+    background-size: 400% 400%;
+    animation: gradientBG 12s ease infinite;
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.container {
+    background: white;
+    max-width: 750px;
+    margin: auto;
+    padding: 25px;
+    border-radius: 12px;
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.title {
+    background: #2563eb;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    border-radius: 10px 10px 0 0;
+    margin: -25px -25px 20px -25px;
+}
+
+label {
+    font-weight: bold;
+    margin-top: 10px;
+    display: block;
+}
+
+input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+}
+
+button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.staff-card {
+    border: 1px solid #ddd;
+    padding: 12px;
+    border-radius: 6px;
+    background: #fafafa;
+    margin-bottom: 12px;
+}
+
+.status-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.status-buttons input { display: none; }
+
+.status-buttons label {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+.status-buttons input:checked + label.present {
+    background: #22c55e;
+    color: white;
+}
+
+.status-buttons input:checked + label.absent {
+    background: #ef4444;
+    color: white;
+}

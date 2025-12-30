@@ -1,0 +1,43 @@
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/script.js"></script>
+
+<div class="container">
+  <div class="title">Admin Dashboard</div>
+
+  <table width="100%" border="1" cellpadding="8">
+    <tr>
+      <th>Store</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+
+    {% for s in stores %}
+    <tr>
+      <td>{{ s[1] }}</td>
+      <td>{{ "Active" if s[2]==1 else "Disabled" }}</td>
+      <td>
+        <a href="/admin/toggle/{{ s[0] }}">Toggle</a> |
+        <a href="/admin/reset/{{ s[0] }}">Reset Password</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <hr>
+
+  <!-- 🔴 RESET ATTENDANCE BUTTON -->
+  <form method="post"
+        action="/admin/reset_attendance"
+        onsubmit="return confirm(
+          'This will RESET ALL attendance & salary data.\nStaff & store accounts will stay.\n\nContinue?'
+        )">
+
+    <button style="background:#dc2626">
+      Reset Attendance & Salary
+    </button>
+
+  </form>
+
+  <br>
+  <a href="/logout">Logout</a>
+</div>

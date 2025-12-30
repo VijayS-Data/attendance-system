@@ -1,0 +1,65 @@
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/script.js"></script>
+
+<div class="container">
+  <div class="title">Attendance</div>
+
+  <div class="nav">
+    <a href="/staff">Staff</a>
+    <a href="/logout">Logout</a>
+  </div>
+
+  <!-- Load attendance by date -->
+  <form method="get" style="margin-bottom:15px;">
+    <label>Select Date</label>
+    <input type="date" name="date" value="{{ today }}">
+    <button type="submit">Load Date</button>
+  </form>
+
+  {% if request.args.get("success") %}
+    <p style="color:green;font-weight:bold;">✔ Attendance Saved</p>
+  {% endif %}
+
+  <!-- Attendance Form -->
+  <form method="post">
+
+    {% for s in staff %}
+    <div class="staff-card">
+
+      <!-- Staff Name -->
+      <b>{{ s[1] }}</b>
+
+      <!-- Status Buttons -->
+      <div class="status-buttons">
+
+        <input
+          type="radio"
+          id="present_{{ s[0] }}"
+          name="status_{{ s[0] }}"
+          value="Present"
+          checked
+        >
+        <label for="present_{{ s[0] }}" class="present">Present</label>
+
+        <input
+          type="radio"
+          id="absent_{{ s[0] }}"
+          name="status_{{ s[0] }}"
+          value="Absent"
+        >
+        <label for="absent_{{ s[0] }}" class="absent">Absent</label>
+
+      </div>
+
+      <!-- Time Inputs -->
+      <div class="time-row">
+        <input type="time" name="in_{{ s[0] }}">
+        <input type="time" name="out_{{ s[0] }}">
+      </div>
+
+    </div>
+    {% endfor %}
+
+    <button type="submit">Submit Attendance</button>
+  </form>
+</div>

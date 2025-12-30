@@ -35,8 +35,15 @@
 <hr>
 
 {% for s in staff %}
-<p>{{ s[1] }} — {{ s[3] }} @ {{ s[4] }}
-<a href="/remove_staff/{{ s[0] }}" onclick="return confirmDelete('{{ s[1] }}')">❌</a>
+<p>
+  <b>{{ s[1] }}</b>
+  — {{ s[3] }} @ {{ s[4] }}
+
+  | <a href="/staff/edit/{{ s[0] }}">✏️ Edit</a>
+
+  | <a href="/remove_staff/{{ s[0] }}"
+       onclick="return confirmDelete('{{ s[1] }}')">❌</a>
 </p>
 {% endfor %}
+
 </div>

@@ -1,0 +1,31 @@
+<link rel="stylesheet" href="/static/style.css">
+
+<div class="container">
+  <div class="title">Edit Staff</div>
+
+  <form method="post">
+
+    <label>Staff Name</label>
+    <input type="text" value="{{ staff[0] }}" disabled>
+
+    <label>Staff Type</label>
+    <select name="staff_type" required>
+      <option value="full-time" {{ 'selected' if staff[1]=='full-time' else '' }}>Full-time</option>
+      <option value="part-time" {{ 'selected' if staff[1]=='part-time' else '' }}>Part-time</option>
+    </select>
+
+    <label>Salary Type</label>
+    <select name="salary_type" required>
+      <option value="daily" {{ 'selected' if staff[2]=='daily' else '' }}>Daily</option>
+      <option value="hourly" {{ 'selected' if staff[2]=='hourly' else '' }}>Hourly</option>
+    </select>
+
+    <label>Salary Amount</label>
+    <input type="number" step="0.01" name="salary_amount" value="{{ staff[3] }}" required>
+
+    <button type="submit">Update Staff</button>
+  </form>
+
+  <br>
+  <a href="/staff">⬅ Back</a>
+</div>
